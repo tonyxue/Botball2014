@@ -63,11 +63,26 @@ void turnRightDegrees(int degrees) //checked
 	while (angle>degrees*-1)
 		angle=get_create_normalized_angle();
 }
+void Right90()
+{
+	int rad=0.5*pi;
+	create_drive(-200,0);
+	msleep(rad*1000);
+	create_stop();
+}
+void Left90()
+{
+	int rad=0.5*pi;
+	create_connect();
+	create_drive(200,0);
+	msleep(rad*1000);
+	create_stop();
+}
 void goAlongLine(double time)
 {
 	int left,right,speed=200;
 	double sTime,cTime=0;
-	sTime=seconds();
+ 	sTime=seconds();
 	create_drive_straight(speed);
 	while(cTime-sTime<=time)
 	{
@@ -92,23 +107,25 @@ void goToHangerRack() //checked
 {
 	create_drive_straight(200);
 	while(!blackLine()){}
-	turnLeftDegrees(84);
-	goAlongLine(2.9);
-	turnRightDegrees(80);
+	//turnLeftDegrees(84);
+	Left90();
+	goAlongLine(3.2);
+	//turnRightDegrees(80);
+	Right90();
 	create_drive_straight(-100);
-	msleep(800);
+	msleep(900);
 	create_stop();
 }
 void putHangers() //checked
 {
 	//put the hangers on to the PVC
 	motor(liftingMotorPort,-100);
-	msleep(500);
+	msleep(1000);
 	off(liftingMotorPort);
 	create_drive_straight(200);
 	msleep(450);
 	create_stop();
-	set_servo_position(catchingServoPort,600);
+	set_servo_position(catchingServoPort,600); // open the "hand" to put the hangers
 	msleep(500);
 	motor(liftingMotorPort,-100);
 	msleep(280);
@@ -134,13 +151,15 @@ void orangeCube()
 			msleep(500);
 			create_drive_straight(-200);// drive back to the start point
 			msleep(3000);
-			turnLeftDegrees(80);// move closer to the shelf a bit
+			//turnLeftDegrees(80);// move closer to the shelf a bit
+			Left90();
 			create_drive_straight(200);
 			msleep(80);
-			turnRightDegrees(80);// heading parallel to the black line
+			//turnRightDegrees(80);// heading parallel to the black line
+			Right90();
 			create_drive_straight(200);// start detection again
-			if(flag==0) set_servo_position(sensorLiftingServo,1110);// extend the sensor to its working position
-			if(flag==1) set_servo_position(sensorLiftingServo,1130);// extend the sensor to its working position
+			if(oFlag==0) set_servo_position(sensorLiftingServo,1110);// extend the sensor to its working position
+			if(oFlag==1) set_servo_position(sensorLiftingServo,1130);// extend the sensor to its working position
 			msleep(300);
 			oFlag++;
 			sTime=seconds();// reset the start time for next trial
@@ -153,7 +172,8 @@ void orangeCube()
 		msleep(230);
 		create_stop();
 
-		turnLeftDegrees(75); // turn toward the shelf
+		//turnLeftDegrees(75); // turn toward the shelf
+		Left90();
 		create_drive_straight(-200);// step back, move the "hand" above the cube detected
 		msleep(250);
 		create_stop();
@@ -172,7 +192,8 @@ void orangeCube()
 		off(liftingMotorPort);
 		// got the cube
 
-		turnLeftDegrees(75);
+		//turnLeftDegrees(75);
+		Left90();
 		goAlongLine(2);// make the create drive straightly
 
 		create_drive_straight(500);// rush to the other end of the game board
@@ -180,7 +201,8 @@ void orangeCube()
 		create_drive_straight(-100);// step back, leave space for future "hand" operations
 		msleep(200);
 
-		turnLeftDegrees(77); // turn toward the container
+		//turnLeftDegrees(77); // turn toward the container
+		Left90();
 		create_drive_straight(100);
 		while(!get_create_lbump() && !get_create_rbump()){}
 		create_drive_straight(-100);// step back, leave space for future "hand" operations
@@ -216,10 +238,12 @@ void yellowCube() // old version of getting yellow cube, no enough time, so no g
 		{
 			create_drive_straight(-200);
 			msleep(3200);
-			turnLeftDegrees(80);
+			//turnLeftDegrees(80);
+			Left90();
 			create_drive_straight(100);
 			msleep(500);
-			turnRightDegrees(80);
+			//turnRightDegrees(80);
+			Right90();
 			create_drive_straight(200);
 			yFlag++;
 			sTime=seconds();
@@ -230,7 +254,8 @@ void yellowCube() // old version of getting yellow cube, no enough time, so no g
 		create_stop();
 		motor(liftingMotorPort,100);// lift the hand a bit
 		msleep(3000);
-		turnLeftDegrees(80);
+		//turnLeftDegrees(80);
+		Left90();
 		create_drive_straight(-200);
 		msleep(500);
 		create_stop();
@@ -250,12 +275,14 @@ void yellowCube() // old version of getting yellow cube, no enough time, so no g
 	
 		create_drive_straight(200);
 		while(!blackLine()){}
-		turnLeftDegrees(75);
+		//turnLeftDegrees(75);
+		Left90();
 		goAlongLine(2);
 
 		create_drive_straight(500);
 		while(!get_create_rbump() && !get_create_lbump()){}
-		turnLeftDegrees(77);
+		//turnLeftDegrees(77);
+		Left90();
 		create_drive_straight(200);
 		while(!get_create_rbump() && !get_create_lbump()){}
 		create_drive_straight(-200);
@@ -288,10 +315,12 @@ void yellowCubeV2() // sweep the yellow cube to the board
 		{
 			create_drive_straight(-200);
 			msleep(3200);
-			turnLeftDegrees(80);
+			//turnLeftDegrees(80);
+			Left90();
 			create_drive_straight(100);
 			msleep(500);
-			turnRightDegrees(80);
+			//turnRightDegrees(80);
+			Right90();
 			create_drive_straight(200);
 			yFlag++;
 			sTime=seconds();
@@ -307,7 +336,7 @@ void yellowCubeV2() // sweep the yellow cube to the board
 int main()
 {
 	printf("Start!\n");
-	lightDetection();
+	//lightDetection();
 	shut_down_in(120);
 
 	servoInit(); // Supply power to all the servos
@@ -317,7 +346,8 @@ int main()
 	printf("Create connected!\n Battery: %d\n",get_create_battery_charge());
 	msleep(1000);
 	
-	turnLeftDegrees(80); // adjust heading in startup area
+	//turnLeftDegrees(80); // adjust heading in startup area
+	Left90();
 	goToHangerRack(); // create move to the hanger rack
 	putHangers(); // the "hand" put hangers on the rack
 	
@@ -331,23 +361,28 @@ int main()
 	while(!blackLine()){}
 	create_drive_straight(-200);// move back a bit after reaching the black line
 	msleep(300);
-	turnRightDegrees(77);// turn right onto the black line
-	goAlongLine(2.2);// drive a long the black line for a few seconds
-	turnLeftDegrees(81);// turn left face towards the PVC
+	//turnRightDegrees(77);// turn right onto the black line
+	Right90();
+	goAlongLine(1.5);// drive a long the black line for a few seconds
+	//turnLeftDegrees(81);// turn left face towards the PVC
+	Left90();
 	create_drive_straight(200);// reach the PVC
 	while(!get_create_rbump() && !get_create_lbump()){}
 	create_drive_straight(-200); // drive away from the PVC on the board, leave space for the long lever sensor
-	msleep(900);
-	turnRightDegrees(78);// turn right, heading parallel to the PVC
+	msleep(400);
+	//turnRightDegrees(78);// turn right, heading parallel to the PVC
+	Right90();
 	orangeCube();// execute the procedures of getting the orange cube
 	if(oFlag!=2)// if successfully got and delivered the orange cube, then move back to the shelf for the yellow cubes
 	{
 		create_drive_straight(-200);// move away from the containers
 		msleep(500);
-		turnLeftDegrees(78);
+		//turnLeftDegrees(78);
+		Left90();
 		create_drive_straight(500); //rush
 		msleep(2700);
-		turnLeftDegrees(76);
+		//turnLeftDegrees(76);
+		Left90();
 		create_drive_straight(200);
 		while(!blackLine()){} // reach the black line
 		create_drive_straight(-200);// step back, leave space for future operations
@@ -355,7 +390,8 @@ int main()
 		create_stop();
 		set_servo_position(sensorLiftingServo,50);// retract the button sensor to avoid collision
 		msleep(2000);
-		turnRightDegrees(76);
+		//turnRightDegrees(76);
+		Right90();
 	}
 	if(oFlag==2) // if failed to get the orange cube, adjust the position for the yellow cubes
 	{
@@ -363,16 +399,17 @@ int main()
 		msleep(500);
 		create_drive_straight(-200);// drive back to the start point
 		msleep(3000);
-		turnLeftDegrees(77);// turn toward the shelf(or PVC on the board)
+		//turnLeftDegrees(77);// turn toward the shelf(or PVC on the board)
+		Left90();
 		create_drive_straight(200);// touch the PVC
 		while(!get_create_lbump() && !get_create_rbump()){}
 		create_drive_straight(-200);// step back, leave enough space for future operations
 		msleep(1500);
-		turnRightDegrees(77);// heading parallel to the black line
+		//turnRightDegrees(77);// heading parallel to the black line
+		Right90();
 	}
 
 	yellowCubeV2();// execute the procedures of sweeping down the yellow cubes
 
 	return 0;
-
 }
