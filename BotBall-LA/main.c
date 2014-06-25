@@ -1,49 +1,42 @@
 #include <stdio.h>
-#define pi 3.1415926
+#include "header.h"
 
-#define liftingMotorPort 0
-#define catchingServoPort 3
-#define lightSensorPortNum 0
-#define cubeButtonPort 15
-#define sensorLiftingServo 2
-#define blackLineSensorPort 1
-
-const int turningSpeed=80, blackLineCriticalValue=900;
+const int turningSpeed=80, blackLineCriticalValue=900, lightCriticalValue=512;
 int oFlag=0,yFlag=0;
 void lightDetection() // Light detection
 {
-	int reading=1024,lightCriticalValue=512; //define Light Sensor port number, critical value and initialize the reading
-	while (reading>lightCriticalValue)
+	int reading;
+	do
 	{
-		msleep(50); // prevent too frequent operation
 		reading=analog10(lightSensorPortNum);
 		printf("The reading from light sensor is %d\n",reading );
-	}
+		msleep(50); // prevent too frequent operation
+		
+	}while (reading>lightCriticalValue);
 }
 void servoInit()
 {
 	enable_servo(catchingServoPort);
 	enable_servo(sensorLiftingServo);
-	set_servo_position(catchingServoPort,1000);
-	set_servo_position(sensorLiftingServo,100);// checked
+	closeHand;//set_servo_position(catchingServoPort,1000);
 	msleep(600);
 	printf("Servo initialized!\n");
 }
 void motorInit()
 {
 	motor(liftingMotorPort,100);
-	msleep(7000);//2700
+	msleep(7000);
 	off(liftingMotorPort);
 	printf("Motor initialized!\n");
 }
 int blackLine()
 {
 	int reading;
-	reading=analog10(blackLineSensorPort);
 	while (1)
 	{
-		if(analog10(blackLineSensorPort)>blackLineCriticalValue) return 1;// Return TRUE when black color is detected
-		if(analog10(blackLineSensorPort)<blackLineCriticalValue) return 0;// Return FALSE when white color is detected
+		reading=analog10(blackLineSensorPort);
+		if(reading>blackLineCriticalValue) return 1;// Return TRUE when black color is detected
+		if(reading<blackLineCriticalValue) return 0;// Return FALSE when white color is detected
 	}
 }
 void turnRight(int degrees)
@@ -73,14 +66,12 @@ void goAlongLine(double time)
 		right=get_create_rfcliff_amt();
 		if (left<800)
 		{
-			//turnLeftDegrees(2);
 			turnLeft(1);
 			cTime=cTime-500;
 			create_drive_straight(speed);
 		}
 		if (right<800)
 		{
-			//turnRightDegrees(2);
 			turnRight(1);
 			cTime=cTime-500;
 			create_drive_straight(speed);
@@ -88,14 +79,29 @@ void goAlongLine(double time)
 		cTime=seconds();
 	}
 }
+int identColor()
+{
+	camera_open();
+	while (1)
+	{
+		camera_update();
+		if (get_object_count(orangeChan) == 0 && get_object_count(yellowChan) == 0) return -1;
+		if (get_object_count(orangeChan) > 0) return 0;
+		if (get_object_count(yellowChan) > 0) return 1;
+	}
+	camera_close();
+}
 void goToHangerRack();
 void putHangers();
+void blueHangers();
 void orangeCube();
-void yellowCubeV2();
+void yellowCube();
 
 int main()
 {
+	int cTime=0,sTime,foundOrange=0;
 	printf("Start!\n");
+	printf("Wait for light!\n");
 	//lightDetection();
 	shut_down_in(120);
 
@@ -111,8 +117,81 @@ int main()
 	putHangers(); // the "hand" put hangers on the rack
 	
 	create_drive_straight(-200);// drive away from hanger rack
-	msleep(1200);
+	msleep(1500);
 	create_stop();
+
+	turnRight(45);
+	create_drive_straight(200);
+	msleep(500);
+	create_stop();
+
+	openHand;//set_servo_position(catchingServoPort, 0); // Open the hand
+	sTime = seconds();
+	create_spin_CW(200);
+	while (cTime - sTime <= 5.0)
+	{
+		cTime = seconds();
+		if (identColor() == 0)
+		{
+			foundOrange = 1;
+			break;
+		}
+	}
+	if (foundOrange = 0)
+	{
+		motor(liftingMotorPort,-100);
+		msleep(500);
+		off(liftingMotorPort);
+
+		sTime=seconds();
+		cTime=seconds();
+		create_spin_CCW(200);
+		while (cTime - sTime <= 5.0)
+		{
+			cTime = seconds();
+			if (identColor == 0)
+			{
+				foundOrange = 1;
+				break;
+			}
+		}
+	}
+	create_stop();
+	set_servo_position(catchingServoPort,500);
+	sTime = seconds();
+	create_drive_straight(200);
+	while (analog_et(etSensorPort<500)){}
+	create_stop();
+	cTime = seconds();
+	closeHand;//set_servo_position(catchingServoPort,1000); // Close the hand
+	motor(liftingMotorPort,100);
+	msleep(200);
+	off(liftingMotorPort);
+	create_drive_straight(-200);
+	msleep(cTime - sTime);
+	create_stop();
+	create_spin_CCW(200);
+	msleep(cTime - sTime);
+	create_stop();
+	create_drive_straight(200);
+	while (!blackLine()){}
+	create_stop();
+	turnLeft(90);
+	create_drive_straight(500);
+	while (!get_create_lbump() && !get_create_rbump()){}
+	create_stop();
+	create_drive_straight(-200);
+	msleep(200);
+	create_stop();
+	turnLeft(90); // turn toward the containers
+	create_drive_straight(-200);
+	msleep(1000);
+	create_stop();
+	motor(liftingMotorPort,-100);
+	msleep(1000);
+	off(liftingMotorPort);
+	set_servo_position(catchingServoPort,0);
+	/*
 	motor(liftingMotorPort,100);// lift the hand to the highest position, avoid collision
 	msleep(2200);
 	off(liftingMotorPort);
@@ -159,9 +238,10 @@ int main()
 		turnRight(90); // heading parallel to the black line
 	}
 
-	yellowCubeV2();// execute the procedures of sweeping down the yellow cubes
+	yellowCube();// execute the procedures of sweeping down the yellow cubes
 
 	return 0;
+	*/
 }
 void goToHangerRack()
 {
@@ -185,7 +265,7 @@ void putHangers()
 	create_drive_straight(200);
 	msleep(450);
 	create_stop();
-	set_servo_position(catchingServoPort,600); // open the "hand" to put the hangers
+	openHand;//set_servo_position(catchingServoPort,600); // open the "hand" to put the hangers
 	msleep(500);
 	motor(liftingMotorPort,-100);
 	msleep(280);
@@ -276,79 +356,7 @@ void orangeCube()
 		msleep(500);
 	}
 }
-void yellowCube() // old version of getting yellow cube, no enough time, so no go
-{
-	double cTime=0,sTime;
-	create_drive_straight(200);
-	msleep(1000);
-	create_stop();
-	set_servo_position(sensorLiftingServo,1450);// extend the button sensor again
-	msleep(1000);
-	create_drive_straight(200);
-	sTime=seconds();
-	while(!digital(cubeButtonPort))
-	{
-		if (yFlag==3) break;
-		cTime=seconds();
-		if (cTime-sTime>2.7)
-		{
-			create_drive_straight(-200);
-			msleep(3200);
-			turnLeft(90);
-			create_drive_straight(100);
-			msleep(500);
-			turnRight(90);
-			create_drive_straight(200);
-			yFlag++;
-			sTime=seconds();
-		}
-	}
-	if (yFlag!=4)
-	{
-		create_stop();
-		motor(liftingMotorPort,100);// lift the hand a bit
-		msleep(3000);
-		turnLeft(90);
-		create_drive_straight(-200);
-		msleep(500);
-		create_stop();
-		set_servo_position(catchingServoPort,300); // open the "hand"
-		msleep(1000);
-		motor(liftingMotorPort,-100);// put the hand down
-		msleep(2000);
-		off(liftingMotorPort);
-		msleep(500);
-		set_servo_position(catchingServoPort,1400); // close the "hand"
-		create_drive_straight(-200);
-		msleep(500);
-		create_stop();
-		motor(liftingMotorPort,100);// lift the hand a bit
-		msleep(3000);
-		off(liftingMotorPort);
-	
-		create_drive_straight(200);
-		while(!blackLine()){}
-		turnLeft(90);
-		goAlongLine(4.0);
-
-		create_drive_straight(500);
-		while(!get_create_rbump() && !get_create_lbump()){}
-		turnLeft(90);
-		create_drive_straight(200);
-		while(!get_create_rbump() && !get_create_lbump()){}
-		create_drive_straight(-200);
-		msleep(1300);
-		create_stop();
-		motor(liftingMotorPort,-100);
-		msleep(1000);
-		off(liftingMotorPort);
-		set_servo_position(catchingServoPort,300); // open the "hand"
-		msleep(500);
-		set_servo_position(catchingServoPort,1400); // close the "hand" again
-		msleep(500);
-	}
-}
-void yellowCubeV2() // sweep the yellow cube to the board
+void yellowCube() // sweep the yellow cube to the board
 {
 	printf("Start sweeping the yellow cubes!\n");
 	//the variable yFlag, which is defined as a global variable, is used in this function as an indicator for whether the robot has successfully detected the yellow cube after several trials.
@@ -382,4 +390,24 @@ void yellowCubeV2() // sweep the yellow cube to the board
 		msleep(6000);
 		create_stop();
 	}
+}
+void cube()
+{
+	int yellowCount=0,colorResult;
+	printf("Start getting orange cube!\n");
+	//the variable oFlag, which is defined as a global variable, is used in this function as an indicator for whether the robot has successfully gotten the orange cube after several trials.
+	double cTime,sTime;// cTime stands for Current Time, sTime stands for Start Time
+	goAlongLine(1.5);
+	create_stop();
+	//lift the arm
+	sTime = seconds();
+	create_spin_CCW(200);
+	while (yellowCount != 2)
+	{
+		colorResult = identColor();
+		if (colorResult == 0) break;
+		if (colorResult == 1) yellowCount++;
+	}
+	if (yellowCount == 0) // No yellow cube on the upper shelf
+	{}
 }
