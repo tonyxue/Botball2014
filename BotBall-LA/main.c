@@ -60,20 +60,20 @@ void goAlongLine(double time)
 	double sTime,cTime=0;
  	sTime=seconds();
 	create_drive_straight(speed);
-	while(cTime-sTime<=time)
+	while(cTime - sTime <= time)
 	{
 		left=get_create_lfcliff_amt();
 		right=get_create_rfcliff_amt();
-		if (left<800)
+		if (left < 800)
 		{
 			turnLeft(1);
-			cTime=cTime-500;
+			cTime = cTime - 500;
 			create_drive_straight(speed);
 		}
-		if (right<800)
+		if (right < 800)
 		{
 			turnRight(1);
-			cTime=cTime-500;
+			cTime = cTime - 500;
 			create_drive_straight(speed);
 		}
 		cTime=seconds();
@@ -116,7 +116,7 @@ int main()
 	goToHangerRack(); // create move to the hanger rack
 	putHangers(); // the "hand" put hangers on the rack
 	
-	create_drive_straight(-200);// drive away from hanger rack
+	create_drive_straight(-200); // drive away from hanger rack
 	msleep(1500);
 	create_stop();
 
@@ -125,7 +125,7 @@ int main()
 	msleep(500);
 	create_stop();
 
-	openHand;//set_servo_position(catchingServoPort, 0); // Open the hand
+	openHand; // set_servo_position(catchingServoPort, 0); // Open the hand
 	sTime = seconds();
 	create_spin_CW(200);
 	while (cTime - sTime <= 5.0)
@@ -143,8 +143,8 @@ int main()
 		msleep(500);
 		off(liftingMotorPort);
 
-		sTime=seconds();
-		cTime=seconds();
+		sTime = seconds();
+		cTime =  seconds();
 		create_spin_CCW(200);
 		while (cTime - sTime <= 5.0)
 		{
@@ -163,7 +163,7 @@ int main()
 	while (analog_et(etSensorPort<500)){}
 	create_stop();
 	cTime = seconds();
-	closeHand;//set_servo_position(catchingServoPort,1000); // Close the hand
+	closeHand; // set_servo_position(catchingServoPort,1000); // Close the hand
 	motor(liftingMotorPort,100);
 	msleep(200);
 	off(liftingMotorPort);
@@ -191,6 +191,7 @@ int main()
 	msleep(1000);
 	off(liftingMotorPort);
 	set_servo_position(catchingServoPort,0);
+	
 	/*
 	motor(liftingMotorPort,100);// lift the hand to the highest position, avoid collision
 	msleep(2200);
@@ -251,17 +252,17 @@ void goToHangerRack()
 	turnLeft(90);
 	goAlongLine(5.6);
 	turnRight(90);
-	create_drive_straight(-100);
-	msleep(900);
+	//create_drive_straight(-100);
+	//msleep(900);
 	create_stop();
 }
 void putHangers()
 {
 	printf("Start putting hangers!\n");
 	//put the hangers on to the PVC
-	motor(liftingMotorPort,-100);
-	msleep(1200);
-	off(liftingMotorPort);
+	//motor(liftingMotorPort,-100);
+	//msleep(1200);
+	//off(liftingMotorPort);
 	create_drive_straight(200);
 	msleep(450);
 	create_stop();
