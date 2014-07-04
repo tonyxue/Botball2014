@@ -26,7 +26,7 @@ void motorInit()
 {
 	motor(liftingMotorPort1,100);
 	motor(liftingMotorPort2,100);
-	msleep(7500);
+	msleep(8200);
 	ao();
 	printf("Motor initialized!\n");
 }
@@ -83,8 +83,8 @@ void goAlongLine(double time)
 int identColor() // awaiting fixation
 {
 	int area;
-	msleep(500);
 	camera_update();
+	msleep(300);
 	if (get_object_count(orangeChan) > 0) return get_object_area(orangeChan,0);
 	return -1;
 }
@@ -121,14 +121,14 @@ int main()
 	msleep(1000);
 	create_stop();
 
-	turnRight(45);
+	turnRight(70);
 	create_drive_straight(200);
-	msleep(500);
+	msleep(400);
 	create_stop();
 
 	motor(liftingMotorPort1,-100);
 	motor(liftingMotorPort2,-100);
-	msleep(2300);
+	msleep(2900);
 	ao();
 
 	sTime = seconds();
@@ -136,11 +136,13 @@ int main()
 	{
 		cTime = seconds();
 		create_spin_CW(50);
-		msleep(500);
+		msleep(300);
 		create_stop();
-		if (identColor() >= 1500)
+		if (identColor() >= 200)
 		{
 			foundOrange = 1;
+			create_spin_CCW(50);
+			msleep(600);
 			break;
 		}
 	}
@@ -148,7 +150,7 @@ int main()
 	{
 		motor(liftingMotorPort1,-100);
 		motor(liftingMotorPort2,-100);
-		msleep(300);
+		msleep(500);
 		ao();
 		create_drive_straight(-100);
 		msleep(500);
@@ -158,9 +160,14 @@ int main()
 		{
 			cTime = seconds();
 			create_spin_CCW(50);
-			msleep(500);
+			msleep(300);
 			create_stop();
-			if (identColor >= 250) break;
+			if (identColor >= 250)
+			{
+				create_spin_CW(50);
+				msleep(600);
+				break;
+			}
 		}
 	}
 	motor(liftingMotorPort1,-100);
@@ -222,7 +229,7 @@ void goToHangerRack()
 	msleep(800);
 	turnLeft(90);
 	create_drive_straight(200);
-	msleep(2200);
+	msleep(2000);
 	turnRight(90);
 	create_stop();
 }
@@ -230,7 +237,7 @@ void putHangers()
 {
 	printf("Start putting hangers!\n");
 	create_drive_straight(200);
-	msleep(1600);
+	msleep(1800);
 	create_stop();
 	openHand; // open the "hand" to put the hangers
 	msleep(500);

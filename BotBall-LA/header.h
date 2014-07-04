@@ -10,5 +10,5 @@
 #define orangeChan 0
 #define yellowChan 1
 
-#define closeHand set_servo_position(catchingServoPort,1250)
+#define closeHand set_servo_position(catchingServoPort,1300)
 #define openHand set_servo_position(catchingServoPort,0)
