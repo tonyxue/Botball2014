@@ -26,7 +26,7 @@ void motorInit()
 {
 	motor(liftingMotorPort1,100);
 	motor(liftingMotorPort2,100);
-	msleep(8200);
+	msleep(7600);
 	ao();
 	printf("Motor initialized!\n");
 }
@@ -98,7 +98,7 @@ int main()
 	//printf("Wait for light!\n");
 	//lightDetection();
 
-	set_a_button_text("Start!\n");
+	set_a_button_text("Start");
 	while (!a_button_clicked()){}
 
 	shut_down_in(120);
@@ -116,23 +116,22 @@ int main()
 	
 	goToHangerRack(); // create move to the hanger rack
 	putHangers(); // the "hand" put hangers on the rack
+
+	STOPHERE_REMOVE_BEFORE_THE_MATCH;
 	
 	create_drive_straight(-200); // drive away from hanger rack
-	msleep(1000);
+	msleep(800);
 	create_stop();
 
-	turnRight(70);
-	create_drive_straight(200);
-	msleep(400);
-	create_stop();
+	turnRight(60);
 
 	motor(liftingMotorPort1,-100);
 	motor(liftingMotorPort2,-100);
-	msleep(2900);
+	msleep(3000);
 	ao();
 
 	sTime = seconds();
-	while (cTime - sTime <= 5.0)
+	while (cTime - sTime <= 7.0)
 	{
 		cTime = seconds();
 		create_spin_CW(50);
@@ -142,7 +141,8 @@ int main()
 		{
 			foundOrange = 1;
 			create_spin_CCW(50);
-			msleep(600);
+			msleep(650);
+			create_stop();
 			break;
 		}
 	}
@@ -150,13 +150,13 @@ int main()
 	{
 		motor(liftingMotorPort1,-100);
 		motor(liftingMotorPort2,-100);
-		msleep(500);
+		msleep(520);
 		ao();
 		create_drive_straight(-100);
 		msleep(500);
 		sTime = seconds();
 		cTime =  seconds();
-		while (cTime - sTime <= 5.0)
+		while (cTime - sTime <= 7.0)
 		{
 			cTime = seconds();
 			create_spin_CCW(50);
@@ -165,18 +165,22 @@ int main()
 			if (identColor >= 250)
 			{
 				create_spin_CW(50);
-				msleep(600);
+				msleep(650);
+				create_stop();
 				break;
 			}
 		}
 	}
+	create_drive_straight(-200);
+	msleep(300);
+	create_stop();
 	motor(liftingMotorPort1,-100);
 	motor(liftingMotorPort2,-100);
-	msleep(300);
+	msleep(500);
 	ao();
 	Time2 = seconds();
-	create_drive_straight(200);
-	while (analog_et(etSensorPort < 500)){}
+	create_drive_straight(-20);
+	while (analog_et(etSensorPort) < 400){}
 	create_stop();
 	Time2 = Time2 - seconds();
 	motor(liftingMotorPort1,-100);
@@ -185,6 +189,7 @@ int main()
 	ao();
 	closeHand; // Close the hand
 	msleep(200);
+
 	motor(liftingMotorPort1,100);
 	motor(liftingMotorPort2,100);
 	msleep(200);
@@ -230,15 +235,24 @@ void goToHangerRack()
 	turnLeft(90);
 	create_drive_straight(200);
 	msleep(2000);
-	turnRight(90);
+	turnRight(95);
 	create_stop();
 }
 void putHangers()
 {
 	printf("Start putting hangers!\n");
+	motor(liftingMotorPort1,-100);
+	motor(liftingMotorPort2,-100);
+	msleep(600);
+	ao();
 	create_drive_straight(200);
-	msleep(1800);
+	msleep(1500);
 	create_stop();
 	openHand; // open the "hand" to put the hangers
-	msleep(500);
+	msleep(50);
+	msleep(300);
+	motor(liftingMotorPort1,100);
+	motor(liftingMotorPort2,100);
+	msleep(250);
+	ao();
 }
