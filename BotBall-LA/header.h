@@ -13,4 +13,4 @@
 #define closeHand set_servo_position(catchingServoPort,1300)
 #define openHand set_servo_position(catchingServoPort,0)
 
-#define STOPHERE_REMOVE_BEFORE_THE_MATCH return 0
+#define PROGRAM_STOPHERE_FOR_DEBUGGING_____REMOVE_BEFORE_THE_MATCH return 0
