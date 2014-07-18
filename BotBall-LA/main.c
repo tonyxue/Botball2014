@@ -9,7 +9,7 @@ void lightDetection() // Light detection
 	printf("Wait for light!\n");
 	do
 	{
-		reading=analog10(lightSensorPortNum);
+		reading = analog10(lightSensorPortNum);
 		printf("The reading from light sensor is %d\n",reading );
 		msleep(50); // prevent too frequent operation
 		
@@ -32,7 +32,7 @@ void servoInit()
 }
 void motorInit()
 {
-	twoMotors(100,7200);
+	twoMotors(100,7400);
 	printf("Motor initialized!\n");
 }
 int blackLine()
@@ -89,7 +89,7 @@ int identColor() // awaiting fixation
 {
 	int area,i;
 	camera_update();
-	msleep(200);
+	msleep(100);
 	for (i=0;i<=2;i++)
 	{
 		if (get_object_count(orangeChan) > 0) 
@@ -103,56 +103,36 @@ int identColor() // awaiting fixation
 }
 void appCube()
 {
-	int distance,dCount=0;
+	int distance,dCount=0,errCount=0;
 	create_drive_straight(30);
 	do
 	{
 		distance = analog_et(etSensorPort);
 		printf("Distance reading: %d\n", distance);
-		if (distance >= 400 && dCount < 3)
+		if (distance >= 500)
+		{
+			create_drive_straight(-200);
+			msleep(500);
+			create_drive_straight(30);
+			continue;
+		}
+		if (distance >= 420 && dCount < 3)
 		{
 			dCount++;
 			distance = 0;
 			msleep(100);
 		}
 	}
-	while (distance < 385 || dCount < 3);
+	while (distance < 480 || dCount < 3);
 	create_stop();
-}
-void moveToCenter()
-{
-	point2 objCtr;
-	camera_update();
-	objCtr = get_object_center(orangeChan,0);
-	if (objCtr.x - 80 > 0)
-	{
-		create_spin_CCW(20);
-		while (objCtr.x - 80 > 5)
-		{
-			camera_update();
-			msleep(200);
-			objCtr = get_object_center(orangeChan,0);
-		}
-		create_stop();
-	}
-	if (objCtr.x - 80 < 0)
-	{
-		create_spin_CW(20);
-		while (80 - objCtr.x > 5)
-		{
-			camera_update();
-			msleep(200);
-			objCtr = get_object_center(orangeChan,0);
-		}
-		create_stop();
-	}
 }
 void goToHangerRack();
 void putHangers();
 
 int main()
 {
-	int cTime=0,sTime,Time2,pauseTime,foundOrange=0,identColorReading,distance;
+	int foundOrange=0,identColorReading,distance,cCount=0;
+	double cTime=0,sTime,Time2;
 	printf("Program Begin!\n");
 	//lightDetection();
 
@@ -163,7 +143,7 @@ int main()
 	printf("Start!\n");
 	camera_open();
 	display_clear();
-	servoInit(); // Supply power to all the servos
+	servoInit(); // Supply electricity to all the servos
 	motorInit(); // set the motor position
 	create_connect(); // connect the create
 	create_full(); // FULL mode, the create will execute commands under any circumstance
@@ -178,28 +158,33 @@ int main()
 	create_drive_straight(-200); // drive away from hanger rack
 	msleep(800);
 	create_stop();
-
-	turnRight(50);
-	create_drive_straight(100);
-	msleep(500);
+	turnRight(90);
+	create_drive_straight(200);
+	msleep(3000);
+	turnLeft(90);
+	create_drive_straight(-200);
+	msleep(1800);
+	create_spin_CCW(200);
+	msleep(200);
 	create_stop();
 
-	twoMotors(-100,2500);
-
+	twoMotors(-100,2450);
 	sTime = seconds();
-	while (cTime - sTime <= 10.0)
+	create_spin_CW(10);
+	while (cTime - sTime <= 8.0)
 	{
 		// unfinished.
 		cTime = seconds();
-		create_spin_CW(10);
 		identColorReading = identColor();
-		while (identColorReading < 410)
+		if (identColorReading >= 410)
 		{
-			identColorReading = identColor();
+			cCount++;
+			if (cCount == 1)
+			{
+				foundOrange = 1;
+				break;
+			}
 		}
-		create_stop();
-		foundOrange = 1;
-		break;
 	}
 	if (foundOrange = 0)
 	{
@@ -212,53 +197,51 @@ int main()
 		while (cTime - sTime <= 10.0)
 		{
 			cTime = seconds();
-			create_spin_CCW(40);
-			msleep(500);
-			create_stop();
+			create_spin_CCW(10);
 			identColorReading = identColor();
-			if (identColorReading >= 250)
-			{
-				break;
-			}
+			if (identColorReading >= 410) break;
 		}
 	}
-	twoMotors(-100,400);
+	create_stop();
+	twoMotors(-100,550);
 	distance = analog_et(etSensorPort);
 	Time2 = seconds();
 	if (distance < 400)
 	{
 		appCube();
-		Time2 = Time2 - seconds();
+		Time2 = seconds() - Time2;
 	}
-	if (distance > 550) //Retrial for abnormal value
+	else if (distance > 480) //Retrial for abnormal value
 	{
 		create_drive_straight(-400);
-		msleep(300);
+		msleep(800);
 		create_stop();
 		appCube();
-		Time2 = Time2 - seconds() - 300;
+		Time2 = seconds() - Time2 - 300;
 	}
 	twoMotors(100,200);
 	closeHand; // Close the hand
 	msleep(200);
 	twoMotors(100,200);
+	create_drive_straight(200);
+	msleep(300);
+
+	create_drive(-50,0);
+	if (foundOrange == 1) msleep(4713 - (cTime - sTime)/4);
+	if (foundOrange == 0) msleep(4705 + (cTime - sTime)/4); // todo
+	turnRight(180);
+	create_stop();
 
 	PROGRAM_STOPHERE_FOR_DEBUGGING_____REMOVE_BEFORE_THE_MATCH;
 	
-
-	twoMotors(100,200);
-	create_drive_straight(-200);
-	msleep(Time2);
-	create_stop();
-	create_spin_CCW(200);
-	if (foundOrange == 1) msleep((cTime - sTime)/4);
-	if (foundOrange == 0) msleep((20 - (cTime - sTime))/4);
-	create_stop();
-	create_drive_straight(200);
-	while (!blackLine()){}
-	create_stop();
-	turnLeft(90);
+    create_drive_straight(100); // Increase the speed steadily
+	msleep(100);
+	create_drive_straight(150);
+	msleep(100);
+	create_drive_straight(250);
+	msleep(100);
 	create_drive_straight(500);
+	
 	while (!get_create_lbump() && !get_create_rbump()){}
 	create_stop();
 	create_drive_straight(-200);
@@ -279,6 +262,7 @@ void goToHangerRack()
 	create_drive_straight(200);
 	while(!blackLine()){}
 	create_stop();
+	msleep(200);
 	create_drive_straight(-200);
 	msleep(200);
 	turnLeft(90);
@@ -292,7 +276,7 @@ void putHangers()
 	printf("Start putting hangers!\n");
 	twoMotors(-100,500);
 	create_drive_straight(200);
-	msleep(800);
+	msleep(900);
 	create_stop();
 	openHand; // open the "hand" to put the hangers
 	msleep(50);
