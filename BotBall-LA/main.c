@@ -1,385 +1,324 @@
 #include <stdio.h>
-#define pi 3.1415926
+#include "header.h"
 
-#define liftingMotorPort 0
-#define catchingServoPort 3
-#define lightSensorPortNum 0
-#define cubeButtonPort 15
-#define sensorLiftingServo 2
-#define blackLineSensorPort 1
-
-const int turningSpeed=80, blackLineCriticalValue=900;
-int oFlag=0,yFlag=0;
+const int turningSpeed=80, blackLineCriticalValue=900, lightCriticalValue=512;
+int oFlag=0,yFlag=0,bumpFlag = 0;
 void lightDetection() // Light detection
 {
-	int reading=1024,lightCriticalValue=512; //define Light Sensor port number, critical value and initialize the reading
-	while (reading>lightCriticalValue)
+	int reading;
+	printf("Wait for light!\n");
+	do
 	{
-		msleep(50); // prevent too frequent operation
-		reading=analog10(lightSensorPortNum);
+		reading = analog10(lightSensorPortNum);
 		printf("The reading from light sensor is %d\n",reading );
-	}
+		msleep(50); // prevent too frequent operation
+		
+	}while (reading>lightCriticalValue);
+}
+void twoMotors(int speed, int time)
+{
+	motor(liftingMotorPort1,speed);
+	motor(liftingMotorPort2,speed);
+	msleep(time);
+	ao();
 }
 void servoInit()
 {
 	enable_servo(catchingServoPort);
-	enable_servo(sensorLiftingServo);
-	set_servo_position(catchingServoPort,1000);
-	set_servo_position(sensorLiftingServo,100);// checked
-	msleep(600);
+//	enable_servo(sensorLiftingServo);
+	closeHand;
+	msleep(200);
 	printf("Servo initialized!\n");
 }
 void motorInit()
 {
-	motor(liftingMotorPort,100);
-	msleep(7000);//2700
-	off(liftingMotorPort);
+	twoMotors(100,7600);
 	printf("Motor initialized!\n");
 }
 int blackLine()
 {
 	int reading;
-	reading=analog10(blackLineSensorPort);
 	while (1)
 	{
-		if(analog10(blackLineSensorPort)>blackLineCriticalValue) return 1;// Return TRUE when black color is detected
-		if(analog10(blackLineSensorPort)<blackLineCriticalValue) return 0;// Return FALSE when white color is detected
+		reading=analog10(blackLineSensorPort);
+		if(reading>blackLineCriticalValue) return 1; // Return TRUE when black color is detected
+		if(reading<blackLineCriticalValue) return 0; // Return FALSE when white color is detected
 	}
 }
 void turnRight(int degrees)
 {
 	int rad=0.5*pi;
-	create_drive(-200,0);
-	msleep(rad*1000*degrees/90);
-	create_stop();
+	create_drive(-50,0);
+	msleep(rad*4000*degrees/90);
+	//create_stop();
+    create_drive_direct(0,0);
 }
 void turnLeft(int degrees)
 {
 	int rad=0.5*pi;
-	create_drive(200,0);
-	msleep(rad*1000*degrees/90);
-	create_stop();
+	create_drive(50,0);
+	msleep(rad*4000*degrees/90);
+	//create_stop();
+    create_drive_direct(0,0);
 }
 void goAlongLine(double time)
 {
 	printf("Following the black line!\n");
 	int left,right,speed=100;
 	double sTime,cTime=0;
- 	sTime=seconds();
+ 	sTime = seconds();
 	create_drive_straight(speed);
-	while(cTime-sTime<=time)
+	while(cTime - sTime <= time)
 	{
 		left=get_create_lfcliff_amt();
 		right=get_create_rfcliff_amt();
-		if (left<800)
+		if (left < 800)
 		{
-			//turnLeftDegrees(2);
 			turnLeft(1);
-			cTime=cTime-500;
+			cTime = cTime - 500;
 			create_drive_straight(speed);
 		}
-		if (right<800)
+		if (right < 800)
 		{
-			//turnRightDegrees(2);
 			turnRight(1);
-			cTime=cTime-500;
+			cTime = cTime - 500;
 			create_drive_straight(speed);
 		}
-		cTime=seconds();
+		cTime = seconds();
 	}
+}
+int identColor() // awaiting fixation
+{
+	int area,i;
+	camera_update();
+	msleep(150);
+	for (i=0;i<=2;i++)
+	{
+		if (get_object_count(orangeChan) > 0) 
+		{
+			area = get_object_area(orangeChan,0);
+			printf("Area reading:%d\n", area);
+			return area;
+		}
+	}
+	return -1;
 }
 void goToHangerRack();
 void putHangers();
-void orangeCube();
-void yellowCubeV2();
-
+void checkBump();
 int main()
 {
-	printf("Start!\n");
-	//lightDetection();
-	shut_down_in(120);
+	int foundOrange=0,identColorReading;
+	double cTime=0,sTime;
+        thread bumpCheckTID;
+        point2 point;
+	printf("Program Begin!\n");
+	create_connect(); // connect the create
+	servoInit(); // Supply electricity to all the servo
+	lightDetection();
 
-	servoInit(); // Supply power to all the servos
+    
+	shut_down_in(120);
+	printf("Start!\n");
+	camera_open();
+	display_clear();
 	motorInit(); // set the motor position
-	create_connect();// connect the create
-	create_full();// FULL mode, the create will execute commands under any circumstance
+	create_full(); // FULL mode, the create will execute commands under any circumstance
 	printf("Create connected!\n Battery: %d\n",get_create_battery_charge());
-	msleep(1000);
+
+        msleep(3000);
+
+	create_drive_straight(100); // avoid scratching with the tube
+	msleep(300);
+	turnLeft(90); // adjust heading in startup area
 	
-	turnLeft(90);// adjust heading in startup area
 	goToHangerRack(); // create move to the hanger rack
 	putHangers(); // the "hand" put hangers on the rack
-	
-	create_drive_straight(-200);// drive away from hanger rack
-	msleep(1200);
-	create_stop();
-	motor(liftingMotorPort,100);// lift the hand to the highest position, avoid collision
-	msleep(2200);
-	off(liftingMotorPort);
-	create_drive_straight(200); // reach the black line
-	while(!blackLine()){}
-	turnRight(90); // turn right onto the black line
-	goAlongLine(3.0);// drive a long the black line for a few seconds
-	turnLeft(90);// turn left face towards the PVC
-	create_drive_straight(200);// reach the PVC
-	while(!get_create_rbump() && !get_create_lbump()){}
-	create_drive_straight(-200); // drive away from the PVC on the board, leave space for the long lever sensor
-	while(!blackLine()){}
-	create_stop();
-	turnRight(90);// turn right, heading parallel to the PVC
-	orangeCube();// execute the procedures of getting the orange cube
-	if(oFlag!=2)// if successfully got and delivered the orange cube, then move back to the shelf for the yellow cubes
-	{
-		create_drive_straight(-200);// move away from the containers
-		msleep(500);
-		turnLeft(90);
-		create_drive_straight(500); //rush
-		msleep(2700);
-		turnLeft(90);
-		create_drive_straight(200);
-		while(!blackLine()){} // reach the black line
-		create_drive_straight(-200);// step back, leave space for future operations
-		msleep(400);
-		create_stop();
-		set_servo_position(sensorLiftingServo,50);// retract the button sensor to avoid collision
-		msleep(2000);
-		turnRight(90);
-	}
-	if(oFlag==2) // if failed to get the orange cube, adjust the position for the yellow cubes
-	{
-		set_servo_position(sensorLiftingServo,50); // retract the long lever sensor
-		msleep(500);
-		create_drive_straight(-200);// drive back to the start point
-		msleep(3000);
-		turnLeft(90); // turn toward the shelf(or PVC on the board)
-		create_drive_straight(200);// touch the PVC
-		while(!get_create_lbump() && !get_create_rbump()){}
-		create_drive_straight(-200);// step back, leave enough space for future operations
-		msleep(1500);
-		turnRight(90); // heading parallel to the black line
-	}
 
-	yellowCubeV2();// execute the procedures of sweeping down the yellow cubes
+	create_drive_straight(-200); // drive away from hanger rack
+        while (!blackLine()){}
+        msleep(95);
+        create_stop();
+        //turnRight(103);
+        turnRight(97);
+	create_drive_straight(-200);
+        msleep(500);
+        create_stop();
+        twoMotors(-100,2650);
+
+    create_drive_straight(50); 
+    sTime = seconds();
+    cTime = seconds();
+    set_servo_position(catchingServoPort,400);
+    identColorReading = identColor();
+    point = get_object_centroid(orangeChan,0);
+    while (1)
+    {
+        //if (identColorReading >= 1020 && identColorReading <= 1100) break;
+        if (identColorReading >= 500 && identColorReading <= 1700) break;
+        cTime = seconds();
+        if (cTime - sTime >= 12.2)
+        {
+            foundOrange = 0;
+            break;
+        }
+        identColorReading = identColor();
+        point = get_object_centroid(orangeChan,0);
+    }
+    if (cTime - sTime < 12.2) foundOrange = 1;
+    set_servo_position(catchingServoPort,0); 
+    if (foundOrange == 1)
+    {
+            create_drive_straight(100);
+            msleep(5372);
+            create_stop();
+            twoMotors(100,1200);
+            if (cTime - sTime <= 2.0) turnLeft(92);
+            else turnLeft(90);
+            create_drive_straight(-200);
+            msleep(1200);
+            create_stop();
+	    twoMotors(-100,1250);
+    }
+    else
+    {
+        create_stop();
+        twoMotors(-100,1200);
+        sTime = seconds();
+        cTime = seconds();
+        identColorReading = identColor();
+        point = get_object_centroid(orangeChan,0);
+        create_drive_straight(-50);
+        while (1)
+            {
+            if (identColorReading >= 1200 && identColorReading <= 1660)
+            {
+                if (point.x - 60 <= 5) break;
+            }
+            identColorReading = identColor();
+            point = get_object_centroid(orangeChan,0);
+        }
+        create_drive_straight(100);
+        msleep(4560);
+        create_stop();
+        motor(liftingMotorPort1,100);
+        motor(liftingMotorPort2,100);
+        turnLeft(90);
+        ao();
+        create_drive_straight(-200);
+        msleep(1830);
+        create_stop();
+        twoMotors(-100,2800);
+    }
+    set_servo_position(catchingServoPort,2000);
+	msleep(200);
+    if (foundOrange == 1)
+    {
+        twoMotors(100,1100);
+        create_drive_straight(200);
+	    msleep(1500);
+    }
+    if (foundOrange == 0)
+    {
+        twoMotors(100,1950);
+        create_drive_straight(200);
+        msleep(2000);
+        create_stop();
+    }
+    turnRight(299);
+    
+    create_stop();
+	
+    create_drive_straight(100); // Increase the speed steadily
+	msleep(100);
+	create_drive_straight(150);
+	msleep(100);
+	create_drive_straight(250);
+	msleep(100);
+	create_drive_straight(500);
+    msleep(2500);
+    create_drive_straight(200);
+	
+	while (!get_create_lbump() && !get_create_rbump()){}
+	create_drive_straight(500);
+    msleep(500);
+    create_drive_straight(-200);
+	msleep(100);
+	create_stop();
+	turnLeft(93); // turn toward the containers
+    create_drive_straight(200);
+    while (!get_create_lbump() && !get_create_rbump()) {}
+	create_drive_straight(-200);
+	msleep(2300);
+	create_stop();
+	twoMotors(-100,2000);
+	openHand;
+    msleep(100);
+    twoMotors(100,2000);
 
 	return 0;
 }
 void goToHangerRack()
 {
+
+        double cTime,sTime,tTime;
+        thread bumpCheckTID;
+        bumpCheckTID = thread_create(checkBump);
 	printf("Going to the hanger rack!\n");
 	create_drive_straight(200);
 	while(!blackLine()){}
+	//create_stop();
+        create_drive_direct(0,0);
+	msleep(200);
+	create_drive_straight(-200);
+	msleep(200);
 	turnLeft(90);
-	goAlongLine(5.6);
-	turnRight(90);
-	create_drive_straight(-100);
-	msleep(900);
-	create_stop();
+	create_drive_straight(200);
+        thread_start(bumpCheckTID);
+        cTime = seconds();
+        sTime = seconds();
+        tTime = 2.2;
+        while (cTime - sTime <= tTime)
+        {
+                cTime = seconds();
+                if (bumpFlag == 0) continue;
+            if (bumpFlag == 1)
+            {
+                bumpFlag = 0;
+                create_drive_straight(400);
+                msleep(100);
+                create_drive_straight(200);
+                tTime += 0.2;
+            }
+        }
+        thread_destroy(bumpCheckTID);
+	//msleep(2200);
+	turnRight(98);
+	//create_stop();
+        create_drive_direct(0,0);
 }
 void putHangers()
 {
-	printf("Start putting hangers!\n");
-	//put the hangers on to the PVC
-	motor(liftingMotorPort,-100);
-	msleep(1200);
-	off(liftingMotorPort);
-	create_drive_straight(200);
-	msleep(450);
-	create_stop();
-	set_servo_position(catchingServoPort,600); // open the "hand" to put the hangers
-	msleep(500);
-	motor(liftingMotorPort,-100);
-	msleep(280);
-	off(liftingMotorPort);
+    	printf("Start putting hangers!\n");
+	twoMotors(-100,450);
+	//create_drive_straight(200)
+	//msleep(910);
+	create_drive_straight(100);
+        msleep(1835);
+        //create_stop();
+        create_drive_direct(0,0);
+        msleep(100);
+        twoMotors(-100,50);
+        msleep(150);
+	openHand; // open the "hand" to put the hangers
+	msleep(200);
+	twoMotors(100,250);
 }
-void orangeCube()
+void checkBump()
 {
-	printf("Start getting orange cube!\n");
-	//the variable oFlag, which is defined as a global variable, is used in this function as an indicator for whether the robot has successfully gotten the orange cube after several trials.
-	double cTime=0,sTime;// cTime stands for Current Time, sTime stands for Start Time
-	goAlongLine(1.0);
-	create_stop();
-	set_servo_position(sensorLiftingServo,1100);// extend the sensor to its working position
-	create_drive_straight(200);// go straight till the button sensor is triggered
-	sTime=seconds();// record the time of start
-	while(!digital(cubeButtonPort))// while the long lever sensor is NOT triggered
-	{
-		if (oFlag==2) break;// give up when no result after two trials
-		cTime=seconds();// initialize the timer
-		if (cTime-sTime>2.8) // timeout reached. Adjust the position and repeat searching
-		{
-			set_servo_position(sensorLiftingServo,50); // retract the long lever sensor
-			msleep(500);
-			create_drive_straight(-200);// drive back to the start point
-			msleep(3000);
-			// move closer to the shelf a bit
-			turnLeft(90);
-			create_drive_straight(200);
-			msleep(80);
-			turnRight(90); // heading parallel to the black line
-			create_drive_straight(200);// start detection again
-			if(oFlag==0) set_servo_position(sensorLiftingServo,1110);// extend the sensor to its working position
-			if(oFlag==1) set_servo_position(sensorLiftingServo,1130);// extend the sensor to its working position
-			msleep(300);
-			oFlag++;
-			sTime=seconds();// reset the start time for next trial
-		}
-	}
-	
-	if (oFlag!=2)// if the attempt(s) didn't fail
-	{
-		create_drive_straight(-200);// repositioning, move back a little little bit. leave space for "hand" operations later
-		msleep(230);
-		create_stop();
-
-		turnLeft(90); // turn toward the shelf
-		create_drive_straight(-200);// step back, move the "hand" above the cube detected
-		msleep(200);
-		create_stop();
-
-		set_servo_position(catchingServoPort,300); // open the "hand"
-		msleep(500);
-
-		motor(liftingMotorPort,-100); // put the hand down
-		msleep(2000);
-		off(liftingMotorPort);
-		msleep(500);
-
-		set_servo_position(catchingServoPort,1400); // close the "hand"
-		motor(liftingMotorPort,100);// lift the hand
-		msleep(1500);
-		off(liftingMotorPort);
-		// got the cube
-
-		turnLeft(90);
-		goAlongLine(4.0);// make the create drive straightly
-
-		create_drive_straight(500);// rush to the other end of the game board
-		while(!get_create_rbump() && !get_create_lbump()){} // reach the other side of the board
-		create_drive_straight(-100);// step back, leave space for future "hand" operations
-		msleep(200);
-
-		turnLeft(90); // turn toward the container
-		create_drive_straight(100);
-		while(!get_create_lbump() && !get_create_rbump()){}
-		create_drive_straight(-100);// step back, leave space for future "hand" operations
-		msleep(1500);
-		create_stop();
-		motor(liftingMotorPort,-100); // put the hand down
-		msleep(1000);
-		off(liftingMotorPort);
-		set_servo_position(catchingServoPort,300); // open the "hand"
-		msleep(500);
-		motor(liftingMotorPort,100);// lift the "hand" up to the highest position, avoid collision in the rush later
-		msleep(5000);
-		off(liftingMotorPort);
-		set_servo_position(catchingServoPort,1400); // close the "hand" again
-		msleep(500);
-	}
-}
-void yellowCube() // old version of getting yellow cube, no enough time, so no go
-{
-	double cTime=0,sTime;
-	create_drive_straight(200);
-	msleep(1000);
-	create_stop();
-	set_servo_position(sensorLiftingServo,1450);// extend the button sensor again
-	msleep(1000);
-	create_drive_straight(200);
-	sTime=seconds();
-	while(!digital(cubeButtonPort))
-	{
-		if (yFlag==3) break;
-		cTime=seconds();
-		if (cTime-sTime>2.7)
-		{
-			create_drive_straight(-200);
-			msleep(3200);
-			turnLeft(90);
-			create_drive_straight(100);
-			msleep(500);
-			turnRight(90);
-			create_drive_straight(200);
-			yFlag++;
-			sTime=seconds();
-		}
-	}
-	if (yFlag!=4)
-	{
-		create_stop();
-		motor(liftingMotorPort,100);// lift the hand a bit
-		msleep(3000);
-		turnLeft(90);
-		create_drive_straight(-200);
-		msleep(500);
-		create_stop();
-		set_servo_position(catchingServoPort,300); // open the "hand"
-		msleep(1000);
-		motor(liftingMotorPort,-100);// put the hand down
-		msleep(2000);
-		off(liftingMotorPort);
-		msleep(500);
-		set_servo_position(catchingServoPort,1400); // close the "hand"
-		create_drive_straight(-200);
-		msleep(500);
-		create_stop();
-		motor(liftingMotorPort,100);// lift the hand a bit
-		msleep(3000);
-		off(liftingMotorPort);
-	
-		create_drive_straight(200);
-		while(!blackLine()){}
-		turnLeft(90);
-		goAlongLine(4.0);
-
-		create_drive_straight(500);
-		while(!get_create_rbump() && !get_create_lbump()){}
-		turnLeft(90);
-		create_drive_straight(200);
-		while(!get_create_rbump() && !get_create_lbump()){}
-		create_drive_straight(-200);
-		msleep(1300);
-		create_stop();
-		motor(liftingMotorPort,-100);
-		msleep(1000);
-		off(liftingMotorPort);
-		set_servo_position(catchingServoPort,300); // open the "hand"
-		msleep(500);
-		set_servo_position(catchingServoPort,1400); // close the "hand" again
-		msleep(500);
-	}
-}
-void yellowCubeV2() // sweep the yellow cube to the board
-{
-	printf("Start sweeping the yellow cubes!\n");
-	//the variable yFlag, which is defined as a global variable, is used in this function as an indicator for whether the robot has successfully detected the yellow cube after several trials.
-	double cTime=0,sTime;
-	create_drive_straight(200);// go straight a bit to pass the hanger rack, avoid collision
-	msleep(1000);
-	create_stop();
-	set_servo_position(sensorLiftingServo,1450);// extend the button sensor again
-	msleep(1000);
-	create_drive_straight(200);// go straight till the button sensor is triggered
-	while(!digital(cubeButtonPort))
-	{
-		if (yFlag==3) break;
-		cTime=seconds();
-		if (cTime-sTime>2.7)
-		{
-			create_drive_straight(-200);
-			msleep(3200);
-			turnLeft(90);
-			create_drive_straight(100);
-			msleep(500);
-			turnRight(90);
-			create_drive_straight(200);
-			yFlag++;
-			sTime=seconds();
-		}
-	}
-	if (yFlag!=4)// if the long lever sensor is triggered
-	{
-		create_drive_straight(500); // rush to sweep the cubes down from the shelf
-		msleep(6000);
-		create_stop();
-	}
+    while (1)
+    {
+        if (get_create_lbump() || get_create_rbump()) bumpFlag = 1;              
+        msleep(100);
+    }
 }
